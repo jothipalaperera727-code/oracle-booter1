@@ -65,8 +65,8 @@ jobs:
           fi
           echo "Target Image OCID: $IMAGE_ID"
 
-          # 193 loops x 90s delay = ~4 hours 49.5 minutes
-          for i in {1..193}
+          # 150 loops x 120s delay = ~5 hours
+          for i in {1..150}
           do
             echo "Firing Request Loop #$i using path: $OCI_BIN"
 
