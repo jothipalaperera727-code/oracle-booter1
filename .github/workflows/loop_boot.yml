@@ -59,7 +59,7 @@ jobs:
           fi
           echo "Target Availability Domain: $AD_NAME"
 
-          IMAGE_ID=$($OCI_BIN compute image list --compartment-id "$COMPARTMENT_ID" --operating-system "Canonical Ubuntu" --shape "VM.Standard.A1.Flex" --query "data[0].id" --raw-output 2>/devnull)
+          IMAGE_ID=$($OCI_BIN compute image list --compartment-id "$COMPARTMENT_ID" --operating-system "Canonical Ubuntu" --shape "VM.Standard.A1.Flex" --query "data[0].id" --raw-output 2>/dev/null)
           if [ -z "$IMAGE_ID" ]; then
             IMAGE_ID="ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa"
           fi
