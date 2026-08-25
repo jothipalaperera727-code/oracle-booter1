@@ -57,7 +57,7 @@ jobs:
               --availability-domain "TVBP:AP-SINGAPORE-1-AD-1" \
               --compartment-id "$COMPARTMENT_ID" \
               --shape "VM.Standard.A1.Flex" \
-              --shape-config '{"ocpus":2,"memoryInGBs":12}' \
+              --shape-config '{"ocpus": 2.0, "memory_in_gbs": 12.0}' \
               --display-name "GitHub-Ampere-Node" \
               --image-id "ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa" \
               --subnet-id "$SUBNET_ID" \
