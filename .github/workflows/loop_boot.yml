@@ -44,8 +44,11 @@ jobs:
           COMPARTMENT_ID=$(echo -n "$RAW_COMPARTMENT" | xargs)
           SUBNET_ID=$(echo -n "$RAW_SUBNET" | xargs)
           
-          # Write public key to a dedicated file to bypass JSON metadata escaping
+          # Write SSH key to file
           echo -n "$RAW_SSH_KEY" | xargs > ssh_key.pub
+
+          # Write shape configuration to a JSON file to guarantee valid syntax
+          echo '{"ocpus": 2, "memoryInGBs": 12}' > shape_config.json
 
           OCI_BIN=$(which oci || echo "/home/runner/bin/oci")
 
@@ -57,7 +60,7 @@ jobs:
               --availability-domain "TVBP:AP-SINGAPORE-1-AD-1" \
               --compartment-id "$COMPARTMENT_ID" \
               --shape "VM.Standard.A1.Flex" \
-              --shape-config "ocpus=2,memoryInGBs=12" \
+              --shape-config file://shape_config.json \
               --display-name "GitHub-Ampere-Node" \
               --image-id "ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa" \
               --subnet-id "$SUBNET_ID" \
