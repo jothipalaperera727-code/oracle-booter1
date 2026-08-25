@@ -41,14 +41,12 @@ jobs:
           OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING: True
           SUPPRESS_LABEL_WARNING: True
         run: |
-          COMPARTMENT_ID=$(echo -n "$RAW_COMPARTMENT" | xargs)
-          SUBNET_ID=$(echo -n "$RAW_SUBNET" | xargs)
+          # Strip all carriage returns and trailing newlines from secrets
+          COMPARTMENT_ID=$(echo "$RAW_COMPARTMENT" | tr -d '\r\n' | xargs)
+          SUBNET_ID=$(echo "$RAW_SUBNET" | tr -d '\r\n' | xargs)
           
-          # Write SSH key to file
-          echo -n "$RAW_SSH_KEY" | xargs > ssh_key.pub
-
-          # Write shape configuration to a JSON file to guarantee valid syntax
-          echo '{"ocpus": 2, "memoryInGBs": 12}' > shape_config.json
+          # Write public key as a single clean line
+          echo "$RAW_SSH_KEY" | tr -d '\r' | grep -v '^$' | head -n 1 > ssh_key.pub
 
           OCI_BIN=$(which oci || echo "/home/runner/bin/oci")
 
@@ -60,9 +58,9 @@ jobs:
               --availability-domain "TVBP:AP-SINGAPORE-1-AD-1" \
               --compartment-id "$COMPARTMENT_ID" \
               --shape "VM.Standard.A1.Flex" \
-              --shape-config file://shape_config.json \
+              --shape-config '{"ocpus":2,"memoryInGBs":12}' \
               --display-name "GitHub-Ampere-Node" \
-              --image-id "ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa" \
+              --source-details '{"sourceType":"image","imageId":"ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa"}' \
               --subnet-id "$SUBNET_ID" \
               --ssh-authorized-keys-file ssh_key.pub \
               --assign-public-ip true 2>&1) || {
