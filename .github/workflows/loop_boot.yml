@@ -17,7 +17,9 @@ jobs:
     - name: Set up Oracle OCI CLI Installer
       run: |
         bash -c "$(curl -L https://githubusercontent.com)" -- --accept-all-defaults
+        # Explicitly expose both potential bin installation directories globally
         echo "/home/runner/bin" >> $GITHUB_PATH
+        echo "/home/runner/bin/x86_64" >> $GITHUB_PATH
 
     - name: Authenticate OCI Security Settings
       run: |
@@ -37,11 +39,17 @@ jobs:
       run: |
         echo "Commencing server availability sweeps..."
         
+        # Define absolute execution paths to bypass path registry failures entirely
+        OCI_BIN="/home/runner/bin/oci"
+        if [ ! -f "$OCI_BIN" ]; then
+            OCI_BIN="oci"
+        fi
+        
         for i in {1..5}
         do
-          echo "Firing Request Loop #$i..."
+          echo "Firing Request Loop #$i using path: $OCI_BIN"
           
-          RESPONSE=$(oci compute instance launch \
+          RESPONSE=$($OCI_BIN compute instance launch \
             --availability-domain "TVBP:AP-SINGAPORE-1-AD-1" \
             --compartment-id "${{ secrets.OCI_COMPARTMENT_OCID }}" \
             --shape "VM.Standard.A1.Flex" \
