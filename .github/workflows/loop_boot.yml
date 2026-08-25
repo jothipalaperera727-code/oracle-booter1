@@ -82,8 +82,8 @@ jobs:
               2>&1) || {
               echo "❌ Request failed:"
               echo "$RESPONSE"
-              echo "Waiting 90 seconds to avoid HTTP 429 rate limits..."
-              sleep 90
+              echo "Waiting 120 seconds to avoid HTTP 429 rate limits..."
+              sleep 120
               continue
             }
 
