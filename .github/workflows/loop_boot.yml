@@ -2,9 +2,11 @@ name: Oracle Ampere 24/7 Provisioner
 
 on:
   schedule:
-    # Triggers every 5 hours (00:00, 05:00, 10:00, 15:00, 20:00 UTC)
-    - cron: '0 */5 * * *'
+    - cron: '0 */5 * * *'  # Fallback safety schedule
   workflow_dispatch:
+
+permissions:
+  actions: write  # Gives GITHUB_TOKEN permission to trigger workflow dispatches
 
 jobs:
   run-provisioner:
@@ -41,6 +43,7 @@ jobs:
           RAW_SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
           OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING: True
           SUPPRESS_LABEL_WARNING: True
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           COMPARTMENT_ID=$(echo "$RAW_COMPARTMENT" | tr -d '\r\n' | xargs)
           SUBNET_ID=$(echo "$RAW_SUBNET" | tr -d '\r\n' | xargs)
@@ -59,13 +62,13 @@ jobs:
           fi
           echo "Target Availability Domain: $AD_NAME"
 
-          IMAGE_ID=$($OCI_BIN compute image list --compartment-id "$COMPARTMENT_ID" --operating-system "Canonical Ubuntu" --shape "VM.Standard.A1.Flex" --query "data[0].id" --raw-output 2>/dev/null)
+          IMAGE_ID=$($OCI_BIN compute image list --compartment-id "$COMPARTMENT_ID" --operating-system "Canonical Ubuntu" --shape "VM.Standard.A1.Flex" --query "data[0].id" --raw-output 2>/devnull)
           if [ -z "$IMAGE_ID" ]; then
             IMAGE_ID="ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa"
           fi
           echo "Target Image OCID: $IMAGE_ID"
 
-          # 193 loops x 90s delay = ~4 hours 49.5 minutes of continuous attempts
+          # 193 loops x 90s delay = ~4 hours 49.5 minutes
           for i in {1..193}
           do
             echo "Firing Request Loop #$i using path: $OCI_BIN"
@@ -92,3 +95,10 @@ jobs:
               exit 0
             fi
           done
+
+          echo "🔄 Max attempts reached. Self-triggering the next workflow run immediately..."
+          curl -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/loop_boot.yml/dispatches" \
+            -d '{"ref":"${{ github.ref_name }}"}'
