@@ -41,31 +41,48 @@ jobs:
           OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING: True
           SUPPRESS_LABEL_WARNING: True
         run: |
-          # Strip all carriage returns and trailing newlines from secrets
           COMPARTMENT_ID=$(echo "$RAW_COMPARTMENT" | tr -d '\r\n' | xargs)
           SUBNET_ID=$(echo "$RAW_SUBNET" | tr -d '\r\n' | xargs)
-          
-          # Write public key as a single clean line
+
+          if [ -z "$COMPARTMENT_ID" ] || [ -z "$SUBNET_ID" ]; then
+            echo "❌ Error: OCI_COMPARTMENT_OCID or OCI_SUBNET_OCID secret is empty or missing."
+            exit 1
+          fi
+
+          # Save clean single-line SSH public key
           echo "$RAW_SSH_KEY" | tr -d '\r' | grep -v '^$' | head -n 1 > ssh_key.pub
 
           OCI_BIN=$(which oci || echo "/home/runner/bin/oci")
+
+          # Dynamically fetch exact AD name for Singapore
+          AD_NAME=$($OCI_BIN iam availability-domain list --compartment-id "$COMPARTMENT_ID" --query "data[0].name" --raw-output 2>/dev/null)
+          if [ -z "$AD_NAME" ]; then
+            AD_NAME="TVBP:AP-SINGAPORE-1-AD-1"
+          fi
+          echo "Target Availability Domain: $AD_NAME"
+
+          # Dynamically fetch latest Ubuntu ARM image OCID
+          IMAGE_ID=$($OCI_BIN compute image list --compartment-id "$COMPARTMENT_ID" --operating-system "Canonical Ubuntu" --shape "VM.Standard.A1.Flex" --query "data[0].id" --raw-output 2>/dev/null)
+          if [ -z "$IMAGE_ID" ]; then
+            IMAGE_ID="ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa"
+          fi
+          echo "Target Image OCID: $IMAGE_ID"
 
           for i in {1..5}
           do
             echo "Firing Request Loop #$i using path: $OCI_BIN"
 
             RESPONSE=$($OCI_BIN compute instance launch \
-              --availability-domain "TVBP:AP-SINGAPORE-1-AD-1" \
+              --availability-domain "$AD_NAME" \
               --compartment-id "$COMPARTMENT_ID" \
               --shape "VM.Standard.A1.Flex" \
-              --shape-config '{"ocpus":2,"memoryInGBs":12}' \
+              --shape-config '{"ocpus":2.0,"memoryInGBs":12.0}' \
               --display-name "GitHub-Ampere-Node" \
-              --source-details '{"sourceType":"image","imageId":"ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa"}' \
+              --image-id "$IMAGE_ID" \
               --subnet-id "$SUBNET_ID" \
               --ssh-authorized-keys-file ssh_key.pub \
-              --assign-public-ip true 2>&1) || {
-              echo "❌ Command failed with exit code $?"
-              echo "Full error output:"
+              2>&1) || {
+              echo "❌ Request failed:"
               echo "$RESPONSE"
               sleep 45
               continue
