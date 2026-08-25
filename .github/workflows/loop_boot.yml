@@ -1,74 +1,5 @@
-name: Oracle Ampere 24/7 Provisioner
-
-on:
-  schedule:
-    - cron: '*/15 * * * *'
-  workflow_dispatch:
-
-jobs:
-  run-provisioner:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code Repository
-        uses: actions/checkout@v4
-
-      - name: Set up Oracle OCI CLI Installer
-        run: |
-          bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
-          echo "/home/runner/bin" >> $GITHUB_PATH
-          echo "/home/runner/bin/x86_64" >> $GITHUB_PATH
-
-      - name: Authenticate OCI Security Settings
-        run: |
-          mkdir -p ~/.oci
-          echo "[DEFAULT]" > ~/.oci/config
-          echo "user=${{ secrets.OCI_USER_OCID }}" >> ~/.oci/config
-          echo "tenancy=${{ secrets.OCI_TENANCY_OCID }}" >> ~/.oci/config
-          echo "region=ap-singapore-1" >> ~/.oci/config
-          echo "fingerprint=${{ secrets.OCI_API_FINGERPRINT }}" >> ~/.oci/config
-          echo "key_file=/home/runner/.oci/oci_api_key.pem" >> ~/.oci/config
-
-          echo "${{ secrets.OCI_API_PRIVATE_KEY }}" > ~/.oci/config.bak
-          tr -d '\r' < ~/.oci/config.bak > ~/.oci/oci_api_key.pem
-          chmod 600 ~/.oci/oci_api_key.pem
-
-      - name: Fire Persistent Server Construction Requests
-        env:
-          RAW_COMPARTMENT: ${{ secrets.OCI_COMPARTMENT_OCID }}
-          RAW_SUBNET: ${{ secrets.OCI_SUBNET_OCID }}
-          RAW_SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
-          OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING: True
-          SUPPRESS_LABEL_WARNING: True
-        run: |
-          COMPARTMENT_ID=$(echo "$RAW_COMPARTMENT" | tr -d '\r\n' | xargs)
-          SUBNET_ID=$(echo "$RAW_SUBNET" | tr -d '\r\n' | xargs)
-
-          if [ -z "$COMPARTMENT_ID" ] || [ -z "$SUBNET_ID" ]; then
-            echo "❌ Error: OCI_COMPARTMENT_OCID or OCI_SUBNET_OCID secret is empty or missing."
-            exit 1
-          fi
-
-          # Save clean single-line SSH public key
-          echo "$RAW_SSH_KEY" | tr -d '\r' | grep -v '^$' | head -n 1 > ssh_key.pub
-
-          OCI_BIN=$(which oci || echo "/home/runner/bin/oci")
-
-          # Dynamically fetch exact AD name for Singapore
-          AD_NAME=$($OCI_BIN iam availability-domain list --compartment-id "$COMPARTMENT_ID" --query "data[0].name" --raw-output 2>/dev/null)
-          if [ -z "$AD_NAME" ]; then
-            AD_NAME="TVBP:AP-SINGAPORE-1-AD-1"
-          fi
-          echo "Target Availability Domain: $AD_NAME"
-
-          # Dynamically fetch latest Ubuntu ARM image OCID
-          IMAGE_ID=$($OCI_BIN compute image list --compartment-id "$COMPARTMENT_ID" --operating-system "Canonical Ubuntu" --shape "VM.Standard.A1.Flex" --query "data[0].id" --raw-output 2>/dev/null)
-          if [ -z "$IMAGE_ID" ]; then
-            IMAGE_ID="ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa"
-          fi
-          echo "Target Image OCID: $IMAGE_ID"
-
-          for i in {1..5}
+# Reduced to 3 loops with 90s delay to stay within OCI API rate limits
+          for i in {1..3}
           do
             echo "Firing Request Loop #$i using path: $OCI_BIN"
 
@@ -84,7 +15,8 @@ jobs:
               2>&1) || {
               echo "❌ Request failed:"
               echo "$RESPONSE"
-              sleep 45
+              echo "Waiting 90 seconds to avoid HTTP 429 rate limits..."
+              sleep 90
               continue
             }
 
