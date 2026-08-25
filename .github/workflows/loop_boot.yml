@@ -2,11 +2,8 @@ name: Oracle Ampere 24/7 Provisioner
 
 on:
   schedule:
-    - cron: '0 */5 * * *'  # Fallback safety schedule
+    - cron: '0 */5 * * *'  # Backup schedule
   workflow_dispatch:
-
-permissions:
-  actions: write  # Gives GITHUB_TOKEN permission to trigger workflow dispatches
 
 jobs:
   run-provisioner:
@@ -43,7 +40,7 @@ jobs:
           RAW_SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
           OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING: True
           SUPPRESS_LABEL_WARNING: True
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           COMPARTMENT_ID=$(echo "$RAW_COMPARTMENT" | tr -d '\r\n' | xargs)
           SUBNET_ID=$(echo "$RAW_SUBNET" | tr -d '\r\n' | xargs)
@@ -99,6 +96,6 @@ jobs:
           echo "🔄 Max attempts reached. Self-triggering the next workflow run immediately..."
           curl -X POST \
             -H "Accept: application/vnd.github+json" \
-            -H "Authorization: token $GH_TOKEN" \
+            -H "Authorization: token $PAT_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/actions/workflows/loop_boot.yml/dispatches" \
             -d '{"ref":"${{ github.ref_name }}"}'
