@@ -35,12 +35,14 @@ jobs:
 
       - name: Fire Persistent Server Construction Requests
         env:
-          RAW_SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
+          SSH_KEY_VAL: ${{ secrets.OCI_SSH_KEY }}
+          OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING: True
+          SUPPRESS_LABEL_WARNING: True
         run: |
-          # Store key in an environment variable to prevent bash/shell escaping issues
-          printf "%s\n" "$RAW_SSH_KEY" > ssh_key.pub
-
           OCI_BIN=$(which oci || echo "/home/runner/bin/oci")
+
+          # Construct metadata JSON safely
+          METADATA_JSON=$(jq -n --arg key "$SSH_KEY_VAL" '{"ssh_authorized_keys": $key}')
 
           for i in {1..5}
           do
@@ -54,7 +56,7 @@ jobs:
               --display-name "GitHub-Ampere-Node" \
               --image-id "ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa" \
               --subnet-id "${{ secrets.OCI_SUBNET_OCID }}" \
-              --ssh-authorized-keys-file ssh_key.pub \
+              --metadata "$METADATA_JSON" \
               --assign-public-ip true 2>&1) || {
               echo "❌ Command failed with exit code $?"
               echo "Full error output:"
