@@ -2,9 +2,8 @@ name: Oracle Ampere 24/7 Provisioner
 
 on:
   schedule:
-    # Triggers every 15 minutes automatically, 24/7
     - cron: '*/15 * * * *'
-  workflow_dispatch: # Allows manual trigger
+  workflow_dispatch:
 
 jobs:
   run-provisioner:
@@ -35,10 +34,12 @@ jobs:
           chmod 600 ~/.oci/oci_api_key.pem
 
       - name: Fire Persistent Server Construction Requests
+        env:
+          RAW_SSH_KEY: ${{ secrets.OCI_SSH_KEY }}
         run: |
-          echo "${{ secrets.OCI_SSH_KEY }}" > ssh_key.pub
+          # Store key in an environment variable to prevent bash/shell escaping issues
+          printf "%s\n" "$RAW_SSH_KEY" > ssh_key.pub
 
-          # Resolve path to oci executable explicitly
           OCI_BIN=$(which oci || echo "/home/runner/bin/oci")
 
           for i in {1..5}
