@@ -66,7 +66,7 @@ jobs:
               --display-name "GitHub-Ampere-Node" \
               --image-id "ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa" \
               --subnet-id "${{ secrets.OCI_SUBNET_OCID }}" \
-              --ssh-authorized-keys-data "${{ secrets.OCI_SSH_KEY }}" \
+              --metadata '{"ssh_authorized_keys":"${{ secrets.OCI_SSH_KEY }}"}'
               --assign-public-ip true 2>&1) || {
               echo "❌ Command failed with exit code $?"
               echo "Full error output:"
