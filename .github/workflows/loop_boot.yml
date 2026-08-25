@@ -4,89 +4,89 @@ on:
   schedule:
     # Triggers every 15 minutes automatically, 24/7
     - cron: '*/15 * * * *'
-  workflow_dispatch: # Allows you to manually trigger it by clicking a button
+  workflow_dispatch: # Allows manual trigger
 
 jobs:
   run-provisioner:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout Code Repository
-      uses: actions/checkout@v4
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
 
-    - name: Set up Oracle OCI CLI Installer
-      run: |
-        bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
-        # Explicitly expose both potential bin installation directories globally
-        echo "/home/runner/bin" >> $GITHUB_PATH
-        echo "/home/runner/bin/x86_64" >> $GITHUB_PATH
+      - name: Set up Oracle OCI CLI Installer
+        run: |
+          bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
+          # Explicitly expose both potential bin installation directories globally
+          echo "/home/runner/bin" >> $GITHUB_PATH
+          echo "/home/runner/bin/x86_64" >> $GITHUB_PATH
 
-    - name: Authenticate OCI Security Settings
-      run: |
-        mkdir -p ~/.oci
-        echo "[DEFAULT]" > ~/.oci/config
-        echo "user=${{ secrets.OCI_USER_OCID }}" >> ~/.oci/config
-        echo "tenancy=${{ secrets.OCI_TENANCY_OCID }}" >> ~/.oci/config
-        echo "region=ap-singapore-1" >> ~/.oci/config
-        echo "fingerprint=${{ secrets.OCI_API_FINGERPRINT }}" >> ~/.oci/config
-        echo "key_file=~/.oci/oci_api_key.pem" >> ~/.oci/config
-        
-        echo "${{ secrets.OCI_API_PRIVATE_KEY }}" > ~/.oci/config.bak
-        tr -d '\r' < ~/.oci/config.bak > ~/.oci/oci_api_key.pem
-        chmod 600 ~/.oci/oci_api_key.pem
+      - name: Authenticate OCI Security Settings
+        run: |
+          mkdir -p ~/.oci
+          echo "[DEFAULT]" > ~/.oci/config
+          echo "user=${{ secrets.OCI_USER_OCID }}" >> ~/.oci/config
+          echo "tenancy=${{ secrets.OCI_TENANCY_OCID }}" >> ~/.oci/config
+          echo "region=ap-singapore-1" >> ~/.oci/config
+          echo "fingerprint=${{ secrets.OCI_API_FINGERPRINT }}" >> ~/.oci/config
+          echo "key_file=~/.oci/oci_api_key.pem" >> ~/.oci/config
 
-    - name: Fire Persistent Server Construction Requests
-  run: |
-    echo "Commencing server availability sweeps..."
-    
-    # Validate OCI CLI is installed and executable
-    OCI_BIN="/home/runner/bin/oci"
-    if [ ! -f "$OCI_BIN" ]; then
-        OCI_BIN=$(which oci) || OCI_BIN="oci"
-    fi
-    
-    # Verify OCI CLI works before attempting launches
-    if ! $OCI_BIN --version > /dev/null 2>&1; then
-        echo "❌ ERROR: OCI CLI not found or not executable at $OCI_BIN"
-        echo "Attempting to reinstall OCI CLI..."
-        bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
-        export PATH="/home/runner/bin:$PATH"
-        OCI_BIN="/home/runner/bin/oci"
-    fi
-    
-    for i in {1..5}
-    do
-      echo "Firing Request Loop #$i using path: $OCI_BIN"
-      
-      RESPONSE=$($OCI_BIN compute instance launch \
-        --availability-domain "TVBP:AP-SINGAPORE-1-AD-1" \
-        --compartment-id "${{ secrets.OCI_COMPARTMENT_OCID }}" \
-        --shape "VM.Standard.A1.Flex" \
-        --shape-config '{"ocpus":2,"memoryInGBs":12}' \
-        --display-name "GitHub-Ampere-Node" \
-        --image-id "ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa" \
-        --subnet-id "${{ secrets.OCI_SUBNET_OCID }}" \
-        --ssh-authorized-keys-data "${{ secrets.OCI_SSH_KEY }}" \
-        --assign-public-ip true 2>&1) || {
-        echo "❌ Command failed with exit code $?"
-        echo "Full error output:"
-        echo "$RESPONSE"
-        sleep 45
-        continue
-      }
-      
-      if [[ "$RESPONSE" == *"Instance"* ]]; then
-        echo "🎉 SUCCESS! Your Ampere Server has been provisioned!"
-        exit 0
-      elif [[ "$RESPONSE" == *"Out of host capacity"* ]]; then
-        echo "❌ Out of capacity. Sleeping 45 seconds before the next loop run..."
-        sleep 45
-      else
-        echo "⚠️ Unexpected Oracle output text recorded:"
-        echo "$RESPONSE"
-        sleep 45
-      fi
-    done
-    
-    echo "❌ All provisioning attempts failed."
-    exit 1
+          echo "${{ secrets.OCI_API_PRIVATE_KEY }}" > ~/.oci/config.bak
+          tr -d '\r' < ~/.oci/config.bak > ~/.oci/oci_api_key.pem
+          chmod 600 ~/.oci/oci_api_key.pem
+
+      - name: Fire Persistent Server Construction Requests
+        run: |
+          echo "Commencing server availability sweeps..."
+
+          # Validate OCI CLI is installed and executable
+          OCI_BIN="/home/runner/bin/oci"
+          if [ ! -f "$OCI_BIN" ]; then
+              OCI_BIN=$(which oci) || OCI_BIN="oci"
+          fi
+
+          # Verify OCI CLI works before attempting launches
+          if ! $OCI_BIN --version > /dev/null 2>&1; then
+              echo "❌ ERROR: OCI CLI not found or not executable at $OCI_BIN"
+              echo "Attempting to reinstall OCI CLI..."
+              bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
+              export PATH="/home/runner/bin:$PATH"
+              OCI_BIN="/home/runner/bin/oci"
+          fi
+
+          for i in {1..5}
+          do
+            echo "Firing Request Loop #$i using path: $OCI_BIN"
+
+            RESPONSE=$($OCI_BIN compute instance launch \
+              --availability-domain "TVBP:AP-SINGAPORE-1-AD-1" \
+              --compartment-id "${{ secrets.OCI_COMPARTMENT_OCID }}" \
+              --shape "VM.Standard.A1.Flex" \
+              --shape-config '{"ocpus":2,"memoryInGBs":12}' \
+              --display-name "GitHub-Ampere-Node" \
+              --image-id "ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa" \
+              --subnet-id "${{ secrets.OCI_SUBNET_OCID }}" \
+              --ssh-authorized-keys-data "${{ secrets.OCI_SSH_KEY }}" \
+              --assign-public-ip true 2>&1) || {
+              echo "❌ Command failed with exit code $?"
+              echo "Full error output:"
+              echo "$RESPONSE"
+              sleep 45
+              continue
+            }
+
+            if [[ "$RESPONSE" == *"Instance"* ]]; then
+              echo "🎉 SUCCESS! Your Ampere Server has been provisioned!"
+              exit 0
+            elif [[ "$RESPONSE" == *"Out of host capacity"* ]]; then
+              echo "❌ Out of capacity. Sleeping 45 seconds before the next loop run..."
+              sleep 45
+            else
+              echo "⚠️ Unexpected Oracle output text recorded:"
+              echo "$RESPONSE"
+              sleep 45
+            fi
+          done
+
+          echo "❌ All provisioning attempts failed."
+          exit 1
