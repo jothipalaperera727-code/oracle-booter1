@@ -36,39 +36,57 @@ jobs:
         chmod 600 ~/.oci/oci_api_key.pem
 
     - name: Fire Persistent Server Construction Requests
-      run: |
-        echo "Commencing server availability sweeps..."
-        
-        # Define absolute execution paths to bypass path registry failures entirely
+  run: |
+    echo "Commencing server availability sweeps..."
+    
+    # Validate OCI CLI is installed and executable
+    OCI_BIN="/home/runner/bin/oci"
+    if [ ! -f "$OCI_BIN" ]; then
+        OCI_BIN=$(which oci) || OCI_BIN="oci"
+    fi
+    
+    # Verify OCI CLI works before attempting launches
+    if ! $OCI_BIN --version > /dev/null 2>&1; then
+        echo "❌ ERROR: OCI CLI not found or not executable at $OCI_BIN"
+        echo "Attempting to reinstall OCI CLI..."
+        bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
+        export PATH="/home/runner/bin:$PATH"
         OCI_BIN="/home/runner/bin/oci"
-        if [ ! -f "$OCI_BIN" ]; then
-            OCI_BIN="oci"
-        fi
-        
-        for i in {1..5}
-        do
-          echo "Firing Request Loop #$i using path: $OCI_BIN"
-          
-          RESPONSE=$($OCI_BIN compute instance launch \
-            --availability-domain "TVBP:AP-SINGAPORE-1-AD-1" \
-            --compartment-id "${{ secrets.OCI_COMPARTMENT_OCID }}" \
-            --shape "VM.Standard.A1.Flex" \
-            --shape-config '{"ocpus":2,"memoryInGBs":12}' \
-            --display-name "GitHub-Ampere-Node" \
-            --image-id "ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa" \
-            --subnet-id "${{ secrets.OCI_SUBNET_OCID }}" \
-            --ssh-authorized-keys-data "${{ secrets.OCI_SSH_KEY }}" \
-            --assign-public-ip true 2>&1)
-            
-          if [[ "$RESPONSE" == *"Instance"* ]]; then
-            echo "🎉 SUCCESS! Your Ampere Server has been provisioned!"
-            exit 0
-          elif [[ "$RESPONSE" == *"Out of host capacity"* ]]; then
-            echo "❌ Out of capacity. Sleeping 45 seconds before the next loop run..."
-            sleep 45
-          else
-            echo "⚠️ Unexpected Oracle output text recorded:"
-            echo "$RESPONSE"
-            sleep 45
-          fi
-        done
+    fi
+    
+    for i in {1..5}
+    do
+      echo "Firing Request Loop #$i using path: $OCI_BIN"
+      
+      RESPONSE=$($OCI_BIN compute instance launch \
+        --availability-domain "TVBP:AP-SINGAPORE-1-AD-1" \
+        --compartment-id "${{ secrets.OCI_COMPARTMENT_OCID }}" \
+        --shape "VM.Standard.A1.Flex" \
+        --shape-config '{"ocpus":2,"memoryInGBs":12}' \
+        --display-name "GitHub-Ampere-Node" \
+        --image-id "ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa" \
+        --subnet-id "${{ secrets.OCI_SUBNET_OCID }}" \
+        --ssh-authorized-keys-data "${{ secrets.OCI_SSH_KEY }}" \
+        --assign-public-ip true 2>&1) || {
+        echo "❌ Command failed with exit code $?"
+        echo "Full error output:"
+        echo "$RESPONSE"
+        sleep 45
+        continue
+      }
+      
+      if [[ "$RESPONSE" == *"Instance"* ]]; then
+        echo "🎉 SUCCESS! Your Ampere Server has been provisioned!"
+        exit 0
+      elif [[ "$RESPONSE" == *"Out of host capacity"* ]]; then
+        echo "❌ Out of capacity. Sleeping 45 seconds before the next loop run..."
+        sleep 45
+      else
+        echo "⚠️ Unexpected Oracle output text recorded:"
+        echo "$RESPONSE"
+        sleep 45
+      fi
+    done
+    
+    echo "❌ All provisioning attempts failed."
+    exit 1
