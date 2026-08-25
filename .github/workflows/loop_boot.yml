@@ -2,7 +2,8 @@ name: Oracle Ampere 24/7 Provisioner
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    # Trigger every 5 minutes (GitHub Actions minimum interval)
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -49,27 +50,23 @@ jobs:
             exit 1
           fi
 
-          # Save clean single-line SSH public key
           echo "$RAW_SSH_KEY" | tr -d '\r' | grep -v '^$' | head -n 1 > ssh_key.pub
-
           OCI_BIN=$(which oci || echo "/home/runner/bin/oci")
 
-          # Dynamically fetch exact AD name for Singapore
-          AD_NAME=$($OCI_BIN iam availability-domain list --compartment-id "$COMPARTMENT_ID" --query "data[0].name" --raw-output 2>/dev/null)
+          AD_NAME=$($OCI_BIN iam availability-domain list --compartment-id "$COMPARTMENT_ID" --query "data[0].name" --raw-output 2>/devnull)
           if [ -z "$AD_NAME" ]; then
             AD_NAME="TVBP:AP-SINGAPORE-1-AD-1"
           fi
           echo "Target Availability Domain: $AD_NAME"
 
-          # Dynamically fetch latest Ubuntu ARM image OCID
-          IMAGE_ID=$($OCI_BIN compute image list --compartment-id "$COMPARTMENT_ID" --operating-system "Canonical Ubuntu" --shape "VM.Standard.A1.Flex" --query "data[0].id" --raw-output 2>/dev/null)
+          IMAGE_ID=$($OCI_BIN compute image list --compartment-id "$COMPARTMENT_ID" --operating-system "Canonical Ubuntu" --shape "VM.Standard.A1.Flex" --query "data[0].id" --raw-output 2>/devnull)
           if [ -z "$IMAGE_ID" ]; then
             IMAGE_ID="ocid1.image.oc1.ap-singapore-1.aaaaaaaaju37vsnun5gtybevsld236w23bglstn2vlyon7g7u26ioww6veqa"
           fi
           echo "Target Image OCID: $IMAGE_ID"
 
-          # Reduced to 3 loops with 90s delay to prevent HTTP 429 rate limits
-          for i in {1..3}
+          # 8 loops x 60-second sleep = ~8 minutes of active attempts per job execution
+          for i in {1..8}
           do
             echo "Firing Request Loop #$i using path: $OCI_BIN"
 
@@ -85,8 +82,8 @@ jobs:
               2>&1) || {
               echo "❌ Request failed:"
               echo "$RESPONSE"
-              echo "Waiting 90 seconds to avoid HTTP 429 rate limits..."
-              sleep 90
+              echo "Waiting 60 seconds to avoid HTTP 429 rate limits..."
+              sleep 60
               continue
             }
 
