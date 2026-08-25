@@ -16,7 +16,7 @@ jobs:
 
     - name: Set up Oracle OCI CLI Installer
       run: |
-        bash -c "$(curl -L https://githubusercontent.com)" -- --accept-all-defaults
+        bash -c "$(curl -L https://raw.githubusercontent.com/oracle/oci-cli/master/scripts/install/install.sh)" -- --accept-all-defaults
         # Explicitly expose both potential bin installation directories globally
         echo "/home/runner/bin" >> $GITHUB_PATH
         echo "/home/runner/bin/x86_64" >> $GITHUB_PATH
