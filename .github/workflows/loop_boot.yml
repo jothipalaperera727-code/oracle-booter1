@@ -70,8 +70,8 @@ jobs:
 
           FAULT_DOMAINS=("FAULT-DOMAIN-1" "FAULT-DOMAIN-2" "FAULT-DOMAIN-3")
 
-          # 30 outer loops x 3 Fault Domains = 90 total attempts (~3 hours total runtime)
-          for i in {1..30}
+          # 25 outer loops x 3 Fault Domains = 75 total attempts (~2.8 hours total runtime)
+          for i in {1..25}
           do
             for fd in "${FAULT_DOMAINS[@]}"
             do
