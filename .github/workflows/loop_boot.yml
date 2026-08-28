@@ -83,6 +83,7 @@ jobs:
                 --compartment-id "$COMPARTMENT_ID" \
                 --shape "VM.Standard.A1.Flex" \
                 --shape-config '{"ocpus":2.0,"memoryInGBs":12.0}' \
+                --boot-volume-size-in-gbs 100 \
                 --display-name "GitHub-Ampere-Node" \
                 --image-id "$IMAGE_ID" \
                 --subnet-id "$SUBNET_ID" \
