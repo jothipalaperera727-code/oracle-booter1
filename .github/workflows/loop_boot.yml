@@ -70,8 +70,8 @@ jobs:
 
           FAULT_DOMAINS=("FAULT-DOMAIN-1" "FAULT-DOMAIN-2" "FAULT-DOMAIN-3")
 
-          # 40 outer loops x 3 Fault Domains = 120 total attempts (~3.2 hours total runtime)
-          for i in {1..40}
+          # 30 outer loops x 3 Fault Domains = 90 total attempts (~3 hours total runtime)
+          for i in {1..30}
           do
             for fd in "${FAULT_DOMAINS[@]}"
             do
@@ -90,8 +90,8 @@ jobs:
                 2>&1) || {
                 echo "❌ Request failed ($fd):"
                 echo "$RESPONSE"
-                echo "Waiting 90 seconds to avoid HTTP 429 rate limits..."
-                sleep 90
+                echo "Waiting 120 seconds to avoid HTTP 429 rate limits..."
+                sleep 120
                 continue
               }
 
@@ -100,7 +100,7 @@ jobs:
                 exit 0
               fi
 
-              sleep 90
+              sleep 120
             done
           done
 
