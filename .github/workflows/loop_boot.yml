@@ -1,9 +1,11 @@
 name: Oracle Ampere 24/7 Provisioner
 
 on:
-  schedule:
-    - cron: '0 */5 * * *'  # Backup schedule
   workflow_dispatch:
+
+concurrency:
+  group: oracle-provisioner
+  cancel-in-progress: false
 
 jobs:
   run-provisioner:
