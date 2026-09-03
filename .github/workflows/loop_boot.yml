@@ -82,7 +82,7 @@ jobs:
                 --fault-domain "$fd" \
                 --compartment-id "$COMPARTMENT_ID" \
                 --shape "VM.Standard.A1.Flex" \
-                --shape-config '{"ocpus":4.0,"memoryInGBs":24.0}' \
+                --shape-config '{"ocpus":2.0,"memoryInGBs":12.0}' \
                 --boot-volume-size-in-gbs 150 \
                 --display-name "GitHub-Ampere-Node" \
                 --image-id "$IMAGE_ID" \
