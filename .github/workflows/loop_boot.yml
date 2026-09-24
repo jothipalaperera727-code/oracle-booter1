@@ -97,7 +97,6 @@ jobs:
               fi
 
               sleep 120
-            done
           done
 
           echo "🔄 Max attempts reached. Self-triggering the next workflow run immediately..."
