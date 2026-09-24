@@ -68,18 +68,13 @@ jobs:
           fi
           echo "Target Image OCID: $IMAGE_ID"
 
-          FAULT_DOMAINS=("FAULT-DOMAIN-1" "FAULT-DOMAIN-2" "FAULT-DOMAIN-3")
-
           # 25 outer loops x 3 Fault Domains = 75 total attempts (~2.8 hours total runtime)
-          for i in {1..25}
+          for i in {1..75}
           do
-            for fd in "${FAULT_DOMAINS[@]}"
-            do
-              echo "Firing Request Loop #$i [$fd] using path: $OCI_BIN"
+              echo "Firing Request Loop #$i using path: $OCI_BIN"
 
               RESPONSE=$($OCI_BIN compute instance launch \
                 --availability-domain "$AD_NAME" \
-                --fault-domain "$fd" \
                 --compartment-id "$COMPARTMENT_ID" \
                 --shape "VM.Standard.A1.Flex" \
                 --shape-config '{"ocpus":2.0,"memoryInGBs":12.0}' \
@@ -89,7 +84,7 @@ jobs:
                 --subnet-id "$SUBNET_ID" \
                 --ssh-authorized-keys-file ssh_key.pub \
                 2>&1) || {
-                echo "❌ Request failed ($fd):"
+                echo "❌ Request failed:"
                 echo "$RESPONSE"
                 echo "Waiting 120 seconds to avoid HTTP 429 rate limits..."
                 sleep 120
@@ -97,7 +92,7 @@ jobs:
               }
 
               if [[ "$RESPONSE" == *"id"* ]]; then
-                echo "🎉 SUCCESS! Your Ampere Server has been provisioned on $fd!"
+                echo "🎉 SUCCESS! Your Ampere Server has been provisioned!"
                 exit 0
               fi
 
